@@ -167,6 +167,40 @@ export function collectLabelRouteClearance({ labels, routedRelations, threshold 
   return hits;
 }
 
+// Two relationship labels must not collide either. collectLabelRouteClearance
+// only compares a label against ROUTES, so two labels stacked on top of each
+// other (a frequent authoring mistake) used to pass validation silently in the
+// architecture, data-flow, lifecycle, and sequence renderers. Mirrors the
+// workflow compiler's own pair check: an overlap of `gap` px or less is
+// tolerated (labels may touch), anything deeper is a hard error.
+export function collectLabelLabelClearance({ labels, gap = 2 }) {
+  const tolerance = Number.isFinite(gap) && gap >= 0 ? gap : 0;
+  const seen = new Set();
+  const entries = [];
+  for (const [fallbackIndex, label] of asArray(labels).entries()) {
+    const rect = label?.rect || label;
+    if (!rect || !isFinitePoint(rect.x, rect.y, rect.width, rect.height) || rect.width < 0 || rect.height < 0) continue;
+    const relationIndex = Number.isInteger(label?.relationIndex) ? label.relationIndex : fallbackIndex;
+    const identity = relationshipIdentity(label?.relation, relationIndex);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    entries.push({ label, relation: label?.relation, relationIndex, rect });
+  }
+  const hits = [];
+  for (let i = 0; i < entries.length; i += 1) {
+    for (let j = i + 1; j < entries.length; j += 1) {
+      const left = entries[i];
+      const right = entries[j];
+      if (sameRelationship(left.relation, right.relation)) continue;
+      if (!rectsOverlap(left.rect, right.rect, -tolerance)) continue;
+      const overlapWidth = Math.min(left.rect.x + left.rect.width, right.rect.x + right.rect.width) - Math.max(left.rect.x, right.rect.x);
+      const overlapHeight = Math.min(left.rect.y + left.rect.height, right.rect.y + right.rect.height) - Math.max(left.rect.y, right.rect.y);
+      hits.push({ left, right, overlapWidth, overlapHeight, overlapLength: Math.min(overlapWidth, overlapHeight), tolerance });
+    }
+  }
+  return hits;
+}
+
 function relationshipIdentity(relation, relationIndex) {
   if (relation?.key !== undefined) return `key:${relation.key}`;
   if (relation?.id) return `id:${relation.from || ''}\u0000${relation.to || ''}\u0000${relation.id}`;
@@ -912,12 +946,12 @@ export function cleanLabelRouteClearanceProblems({
 }) {
   if (qualityProfileForGate(profile, profileIsAuthoritative) !== 'showcase') return [];
   const routedRelations = collectEligibleRoutedRelations({ relations, endpointIds, pathFor });
-  return collectLabelRouteClearance({ labels, routedRelations, threshold }).map((hit) => {
-    const describe = (relation, relationIndex) => {
-      const relationId = relation?.id ? ` id "${relation.id}"` : '';
-      const relationLabel = relation?.label ? ` label "${relation.label}"` : '';
-      return `${relationCollection}[${relationIndex}]${relationId} "${relation?.from}" -> "${relation?.to}"${relationLabel}`;
-    };
+  const describe = (relation, relationIndex) => {
+    const relationId = relation?.id ? ` id "${relation.id}"` : '';
+    const relationLabel = relation?.label ? ` label "${relation.label}"` : '';
+    return `${relationCollection}[${relationIndex}]${relationId} "${relation?.from}" -> "${relation?.to}"${relationLabel}`;
+  };
+  const routeMessages = collectLabelRouteClearance({ labels, routedRelations, threshold }).map((hit) => {
     const clearance = Math.round(hit.clearance * 10) / 10;
     const from = hit.start.map((value) => Math.round(value * 10) / 10).join(', ');
     const to = hit.end.map((value) => Math.round(value * 10) / 10).join(', ');
@@ -941,6 +975,31 @@ export function cleanLabelRouteClearanceProblems({
     });
     return message;
   });
+  const labelHint = 'separate the two labels with labelAt, labelDx, labelDy, or labelSegment';
+  const labelMessages = collectLabelLabelClearance({ labels }).map((hit) => {
+    const overlap = Math.round(hit.overlapLength * 10) / 10;
+    const leftLabel = hit.left.label?.label || '';
+    const rightLabel = hit.right.label?.label || '';
+    const message = `[composition/label-label-clearance] showcase ${diagramType} label "${leftLabel}" on ${describe(hit.left.relation, hit.left.relationIndex)} overlaps label "${rightLabel}" on ${describe(hit.right.relation, hit.right.relationIndex)} by ${overlap}px (label rects ${formatRect(hit.left.rect)} and ${formatRect(hit.right.rect)}; tolerance ${hit.tolerance}px) — ${labelHint}.`;
+    recordDiagnostic({
+      code: 'composition/label-label-clearance',
+      severity: 'error',
+      message,
+      subject: relationshipSubject(diagramType, relationCollection, hit.left.relationIndex, hit.left.relation),
+      evidence: {
+        label: leftLabel,
+        otherRelationship: relationshipSubject(diagramType, relationCollection, hit.right.relationIndex, hit.right.relation),
+        otherLabel: rightLabel,
+        overlapPx: overlap,
+        tolerancePx: hit.tolerance,
+        labelRect: hit.left.rect,
+        otherLabelRect: hit.right.rect,
+      },
+      supportedFixes: [labelHint],
+    });
+    return message;
+  });
+  return [...routeMessages, ...labelMessages];
 }
 
 function qualityProfileForGate(profile, profileIsAuthoritative) {

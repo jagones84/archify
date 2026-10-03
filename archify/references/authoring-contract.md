@@ -151,6 +151,8 @@ Run `validate` after every edit. Consume `diagnostics[]` by stable `code`, exact
 
 Use one left-to-right spine with short vertical branches. Prefer 6–12 primary components and group only real ownership, trust, process, or deployment boundaries. Boundaries do not replace relationships.
 
+Relationships carry meaning: label every relationship whose direction, protocol, or action is not obvious from its endpoints, and never let one label mask another (label-to-label clearance is enforced in showcase). When the system is a loop — an agent loop, a request/response cycle, a queue and worker, a read-modify-write state cycle — draw the return relationships too. A one-way chain that dead-ends at a router, a store, or a sandbox is almost always a missing feedback edge, not a terminal node. Reserve a true terminal (an entry-only source, an outbound telemetry sink) for a node that genuinely only sends or only receives, and state that in a card.
+
 Grid placement is preferred when the schema supports it. Free positions are appropriate for a bounded exception, not for prose-level coordinate planning. Keep external actors outside the system boundary when that is factually true.
 
 ### Workflow
