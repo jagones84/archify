@@ -342,6 +342,23 @@ const CASES = [
     ['Tag', 'legible', 'widen size']],
   ['architecture: component overlap suggests fix', 'architecture',
     (d) => { d.components[1].pos = [...d.components[0].pos]; }, ['Suggested fix', 'move "']],
+  ['architecture: two relationship labels cannot collide', 'architecture',
+    (d) => {
+      d.meta.viewBox = [700, 460];
+      delete d.meta.views;
+      d.boundaries = [];
+      d.cards = [];
+      d.components = [
+        { id: 'a', type: 'backend', label: 'A', pos: [40, 120], size: [120, 60] },
+        { id: 'c', type: 'backend', label: 'C', pos: [500, 120], size: [120, 60] },
+        { id: 'b', type: 'backend', label: 'B', pos: [40, 300], size: [120, 60] },
+        { id: 'e', type: 'backend', label: 'E', pos: [500, 300], size: [120, 60] },
+      ];
+      d.connections = [
+        { from: 'a', to: 'c', label: 'alpha exchange', labelAt: [340, 220] },
+        { from: 'b', to: 'e', label: 'beta exchange', labelAt: [340, 220] },
+      ];
+    }, ['label-label-clearance']],
 
 ];
 

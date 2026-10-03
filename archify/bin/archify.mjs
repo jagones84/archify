@@ -2717,6 +2717,14 @@ const COMPOSITION_FIXES = {
   'composition/label-canvas-containment': ['if authored labelAt/labelDx/labelDy/labelSegment controls exist and are not required by the user, remove them to let the renderer re-plan; otherwise preserve that intent and adjust labelAt, labelDx, labelDy, or labelSegment so the label rect stays inside the viewBox, or enlarge meta.viewBox'],
   'composition/micro-segment': ['if authored via/route/channelX/channelY controls exist and are not required by the user, remove them to let the renderer re-plan; otherwise preserve that intent and move the route/channel/via point so every visible segment is at least 8px'],
   'composition/short-interior-segment': ['if authored via/route/channelX/channelY controls exist and are not required by the user, remove them to let the renderer re-plan; otherwise preserve that intent and move the route/channel/via point so every interior turn has at least 16px'],
+  'composition/proper-crossing': ['adjust route/via or channel coordinates so unrelated relationships use separate corridors'],
+  'composition/ambiguous-corridor': ['adjust route/via or channel coordinates so unrelated relationships do not visually merge'],
+  'composition/container-border-run': ['route across the frame perpendicularly through a clear opening'],
+  'composition/label-route-clearance': ['adjust labelAt, labelDx, labelDy, labelSegment, message y, or the other relationship route'],
+  'composition/label-label-clearance': ['separate the two relationship labels with labelAt, labelDx, labelDy, or labelSegment'],
+  'composition/desktop-readability': ['reduce the viewBox width, shorten node copy, widen affected nodes, or split the diagram so node context remains at least 6px at a 1440px desktop viewport'],
+  'composition/micro-segment': ['move the route/channel/via point so every visible segment is at least 8px'],
+  'composition/short-interior-segment': ['move the route/channel/via point so every interior turn has at least 16px'],
 };
 
 function checkerDiagnostics(checker) {
